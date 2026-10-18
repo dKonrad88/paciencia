@@ -89,13 +89,13 @@ button.btn:disabled{opacity:.4;cursor:default;transform:none}
 }
 .row-top{
   display:grid;
-  grid-template-columns:repeat(7,1fr);
+  grid-template-columns:repeat(7,minmax(0,1fr));
   gap:var(--gap);
   margin-bottom:var(--vgap);
 }
 .tableau{
   display:grid;
-  grid-template-columns:repeat(7,1fr);
+  grid-template-columns:repeat(7,minmax(0,1fr));
   gap:var(--gap);
   align-items:start;
 }
@@ -113,6 +113,10 @@ button.btn:disabled{opacity:.4;cursor:default;transform:none}
   font-size:min(5vw,26px);color:rgba(255,255,255,.14);
 }
 .pile{position:relative;min-height:10px}
+/* colunas do tabuleiro: altura vem do conteúdo (minHeight via JS),
+   largura vem da célula do grid — NÃO do aspect-ratio (senão a pilha
+   alta força a largura e empurra as colunas pra fora da tela) */
+.tableau .slot{aspect-ratio:auto}
 
 /* ============ cartas ============ */
 .card{
