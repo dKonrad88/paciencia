@@ -325,10 +325,13 @@ const $=s=>document.querySelector(s);
 const isRedSuit=si=>si===1||si===2;
 
 // ---------- níveis ----------
+// Todos os níveis compram 1 carta por vez (Vira 1). A dificuldade vem
+// das AJUDAS: reciclagens do monte, dicas e desfazer. (Vira 3 foi
+// removido — o Diego preferiu sempre 1 carta.)
 const LEVELS={
   facil:  {nome:'Fácil',  draw:1, redeals:Infinity, hints:Infinity, undos:Infinity},
   medio:  {nome:'Médio',  draw:1, redeals:Infinity, hints:3,        undos:Infinity},
-  dificil:{nome:'Difícil',draw:3, redeals:2,        hints:1,        undos:12},
+  dificil:{nome:'Difícil',draw:1, redeals:2,        hints:1,        undos:8},
 };
 const DAILY_CFG={nome:'Desafio do dia',draw:1,redeals:Infinity,hints:3,undos:Infinity};
 
