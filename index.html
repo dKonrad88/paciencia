@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Paciência</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* ============ tokens: mesa de carteado à noite ============ */
+:root{
+  --felt-1:#0c5a3a;
+  --felt-2:#064a2f;
+  --felt-edge:#032417;
+  --gold:#e9c46a;
+  --gold-hi:#ffe9a8;
+  --ink:#f4f1e8;
+  --ink-dim:#bcd6c8;
+  --card:#fdfbf4;
+  --card-edge:#d8d2c0;
+  --card-back:#2a4a6b;
+  --card-back-2:#1a3350;
+  --red:#c62f3b;
+  --black:#1f2430;
+  --slot:rgba(255,255,255,.06);
+  --slot-edge:rgba(255,255,255,.16);
+  --glow:rgba(233,196,106,.55);
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'Nunito',system-ui,sans-serif;
+  --shadow:0 6px 16px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 0%, #0f6b46 0%, transparent 60%),
+    radial-gradient(ellipse 140% 100% at 50% 120%, #063a24 0%, transparent 55%),
+    linear-gradient(160deg,var(--felt-1),var(--felt-2));
+  background-attachment:fixed;
+  color:var(--ink);
+  font-family:var(--sans);
+  min-height:100%;
+  overflow-x:hidden;
+  user-select:none;-webkit-user-select:none;
+}
+
+/* ============ topo ============ */
+header{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px 10px;
+  max-width:860px;margin:0 auto;
+  flex-wrap:wrap;
+}
+h1{
+  font-family:var(--serif);font-weight:700;
+  font-size:26px;margin:0;letter-spacing:.5px;
+  color:var(--gold);text-shadow:0 2px 10px rgba(0,0,0,.4);
+  display:flex;align-items:center;gap:8px;
+}
+h1 .suit{font-size:20px}
+.spades{color:#f4f1e8}.hearts{color:#ff7a84}
+.stats{display:flex;gap:16px;margin-left:auto;flex-wrap:wrap}
+.stat{text-align:center;min-width:52px}
+.stat b{display:block;font-size:19px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat span{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink-dim)}
+
+.toolbar{
+  display:flex;gap:8px;padding:0 16px 8px;
+  max-width:860px;margin:0 auto;flex-wrap:wrap;
+}
+button.btn{
+  font-family:var(--sans);font-weight:700;font-size:13px;
+  color:var(--ink);background:rgba(0,0,0,.22);
+  border:1px solid var(--slot-edge);border-radius:11px;
+  padding:9px 14px;cursor:pointer;transition:.12s;
+  display:inline-flex;align-items:center;gap:6px;
+}
+button.btn:hover{background:rgba(0,0,0,.34);transform:translateY(-1px)}
+button.btn:active{transform:translateY(0)}
+button.btn.primary{background:var(--gold);color:#3a2a06;border-color:var(--gold-hi)}
+button.btn.primary:hover{background:var(--gold-hi)}
+button.btn:disabled{opacity:.4;cursor:default;transform:none}
+
+/* ============ tabuleiro ============ */
+#board{
+  max-width:860px;margin:0 auto;padding:4px 16px 120px;
+}
+.row-top{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:var(--gap);
+  margin-bottom:var(--vgap);
+}
+.tableau{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:var(--gap);
+  align-items:start;
+}
+:root{--gap:min(2.2vw,14px);--vgap:18px}
+
+.slot{
+  position:relative;
+  aspect-ratio:5/7;
+  border-radius:9px;
+  background:var(--slot);
+  border:1.5px dashed var(--slot-edge);
+}
+.slot .ph{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-size:min(5vw,26px);color:rgba(255,255,255,.14);
+}
+.pile{position:relative;min-height:10px}
+
+/* ============ cartas ============ */
+.card{
+  position:absolute;left:0;right:0;top:0;
+  aspect-ratio:5/7;
+  border-radius:9px;
+  background:var(--card);
+  border:1px solid var(--card-edge);
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  transition:transform .08s, box-shadow .12s;
+  will-change:transform;
+  overflow:hidden;
+}
+.card.red .rank,.card.red .suit-c,.card.red .pip{color:var(--red)}
+.card.black .rank,.card.black .suit-c,.card.black .pip{color:var(--black)}
+.card .corner{
+  position:absolute;display:flex;flex-direction:column;align-items:center;
+  line-height:.9;font-weight:800;font-family:var(--serif);
+}
+.card .corner.tl{top:4%;left:7%}
+.card .corner.br{bottom:4%;right:7%;transform:rotate(180deg)}
+.card .rank{font-size:min(3.6vw,19px)}
+.card .suit-c{font-size:min(3vw,15px)}
+.card .center{
+  position:absolute;inset:18% 12% 18%;
+  display:grid;place-items:center;
+  font-size:min(9vw,46px);opacity:.92;
+}
+.card.back{
+  background:
+    repeating-linear-gradient(45deg,var(--card-back) 0 7px,var(--card-back-2) 7px 14px);
+  border-color:#6d8fb5;
+}
+.card.back::after{
+  content:"";position:absolute;inset:7%;border-radius:6px;
+  border:1.5px solid rgba(255,255,255,.28);
+}
+.card.dragging{cursor:grabbing;box-shadow:0 18px 40px rgba(0,0,0,.5);z-index:999;transition:none;pointer-events:none}
+.card.hint{animation:hint .7s ease 2}
+@keyframes hint{50%{box-shadow:0 0 0 3px var(--gold),0 8px 24px var(--glow)}}
+.card.won-fly{transition:transform .35s cubic-bezier(.4,1.4,.6,1),opacity .35s}
+
+.stock-count{
+  position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+  font-size:11px;font-weight:800;color:var(--ink-dim);
+}
+.recycle{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-size:min(6vw,28px);color:rgba(255,255,255,.3);cursor:pointer;
+}
+
+/* ============ vitória ============ */
+#win{
+  position:fixed;inset:0;display:grid;place-items:center;
+  background:rgba(3,20,13,.82);backdrop-filter:blur(4px);
+  z-index:1000;padding:24px;text-align:center;
+}
+#win .panel{
+  background:linear-gradient(160deg,#0f6b46,#064a2f);
+  border:1px solid var(--gold);border-radius:20px;
+  padding:30px 28px;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.6);
+  animation:pop .4s cubic-bezier(.3,1.5,.5,1);
+}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+#win h2{font-family:var(--serif);font-size:30px;margin:0 0 6px;color:var(--gold)}
+#win p{margin:4px 0;color:var(--ink-dim)}
+#win .big{font-size:40px;margin:10px 0;color:var(--ink);font-weight:800}
+
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(0,0,0,.8);color:var(--ink);padding:10px 18px;border-radius:12px;
+  font-weight:700;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:1001;
+  border:1px solid var(--slot-edge);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:520px){
+  :root{--vgap:14px}
+  h1{font-size:22px}
+  .toolbar{gap:6px}
+  button.btn{padding:8px 11px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="suit spades">♠</span>Paciência<span class="suit hearts">♥</span></h1>
+  <div class="stats">
+    <div class="stat"><b id="score">0</b><span>Pontos</span></div>
+    <div class="stat"><b id="moves">0</b><span>Jogadas</span></div>
+    <div class="stat"><b id="time">0:00</b><span>Tempo</span></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn primary" id="btnNew">🔄 Novo jogo</button>
+  <button class="btn" id="btnUndo">↩︎ Desfazer</button>
+  <button class="btn" id="btnHint">💡 Dica</button>
+  <button class="btn" id="btnAuto" hidden>⚡ Completar</button>
+  <button class="btn" id="btnMode">🎚️ Vira 1</button>
+</div>
+
+<div id="board">
+  <div class="row-top">
+    <div class="slot" id="stock" data-pile="stock" data-idx="0">
+      <div class="pile"></div>
+      <div class="stock-count"></div>
+    </div>
+    <div class="slot" id="waste" data-pile="waste" data-idx="0">
+      <div class="pile"></div>
+    </div>
+    <div class="slot" aria-hidden="true" style="visibility:hidden"></div>
+    <div class="slot found" data-pile="foundation" data-idx="0"><div class="ph">♠</div><div class="pile"></div></div>
+    <div class="slot found" data-pile="foundation" data-idx="1"><div class="ph">♥</div><div class="pile"></div></div>
+    <div class="slot found" data-pile="foundation" data-idx="2"><div class="ph">♦</div><div class="pile"></div></div>
+    <div class="slot found" data-pile="foundation" data-idx="3"><div class="ph">♣</div><div class="pile"></div></div>
+  </div>
+  <div class="tableau" id="tableau"></div>
+</div>
+
+<div id="win" hidden>
+  <div class="panel">
+    <h2>Você venceu! 🎉</h2>
+    <div class="big" id="winScore">0</div>
+    <p id="winInfo"></p>
+    <button class="btn primary" id="btnWinNew" style="margin-top:14px">Jogar de novo</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+const SUITS=['♠','♥','♦','♣'];
+const RED=new Set(['♥','♦']);
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const $=s=>document.querySelector(s);
+
+// ---------- estado ----------
+let stock=[], waste=[], foundations=[[],[],[],[]], tableau=[[],[],[],[],[],[],[]];
+let history=[], moves=0, score=0, draw3=false, started=0, timer=null, won=false;
+
+const cols=()=>[...document.querySelectorAll('.tableau .slot')];
+
+// cria os 7 slots de coluna uma única vez
+(function buildTableau(){
+  const t=document.getElementById('tableau');
+  for(let c=0;c<7;c++){
+    const s=document.createElement('div');
+    s.className='slot';
+    s.dataset.pile='tableau';s.dataset.idx=c;
+    s.innerHTML='<div class="pile"></div>';
+    t.appendChild(s);
+  }
+})();
+
+function uid(){return Math.random().toString(36).slice(2,9)}
+
+function freshDeck(){
+  const d=[];
+  for(const s of SUITS) for(let r=0;r<13;r++) d.push({id:uid(),suit:s,rank:r,red:RED.has(s),up:false});
+  // shuffle Fisher-Yates
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+
+function deal(){
+  const d=freshDeck();
+  stock=[];waste=[];foundations=[[],[],[],[]];tableau=[[],[],[],[],[],[],[]];
+  for(let c=0;c<7;c++){
+    for(let n=0;n<=c;n++){
+      const card=d.pop();
+      card.up=(n===c);
+      tableau[c].push(card);
+    }
+  }
+  stock=d; // resto vira monte
+  history=[];moves=0;score=0;won=false;
+  started=Date.now();
+  if(timer)clearInterval(timer);
+  timer=setInterval(tick,1000);
+  $('#win').hidden=true;
+  render();updateHUD();
+}
+
+// ---------- snapshot p/ desfazer ----------
+function snapshot(){
+  history.push(JSON.stringify({stock,waste,foundations,tableau,moves,score}));
+  if(history.length>200)history.shift();
+}
+function undo(){
+  if(!history.length)return;
+  const s=JSON.parse(history.pop());
+  ({stock,waste,foundations,tableau,moves,score}=s);
+  won=false;$('#win').hidden=true;
+  render();updateHUD();
+}
+
+// ---------- regras ----------
+function canStackTableau(moving, target){
+  // moving: carta que será colocada; target: topo da coluna (ou null = vazia)
+  if(!target) return moving.rank===12; // só Rei em coluna vazia
+  return target.up && (target.red!==moving.red) && (target.rank===moving.rank+1);
+}
+function canStackFoundation(moving, pile){
+  if(pile.length===0) return moving.rank===0; // Ás
+  const t=pile[pile.length-1];
+  return t.suit===moving.suit && moving.rank===t.rank+1;
+}
+
+// pilha física por descrição
+function getPile(type,idx){
+  if(type==='stock')return stock;
+  if(type==='waste')return waste;
+  if(type==='foundation')return foundations[idx];
+  return tableau[idx];
+}
+
+// quais cartas podem ser pegas a partir de (type,idx,cardId)
+function grabStack(type,idx,cardId){
+  const pile=getPile(type,idx);
+  const pos=pile.findIndex(c=>c.id===cardId);
+  if(pos<0)return null;
+  if(type==='tableau'){
+    // só se todas de pos..fim estão viradas e em sequência válida
+    for(let i=pos;i<pile.length;i++) if(!pile[i].up) return null;
+    for(let i=pos;i<pile.length-1;i++){
+      const a=pile[i],b=pile[i+1];
+      if(!(a.red!==b.red && a.rank===b.rank+1)) return null;
+    }
+    return pile.slice(pos);
+  }
+  // waste/foundation: só a última
+  if(pos!==pile.length-1)return null;
+  return pile.slice(pos);
+}
+
+// tenta mover stack para destino (type,idx). retorna bool
+function doMove(fromType,fromIdx,cards,toType,toIdx){
+  const moving=cards[0];
+  let ok=false;
+  if(toType==='tableau'){
+    const dst=tableau[toIdx];
+    ok=canStackTableau(moving, dst[dst.length-1]||null);
+  }else if(toType==='foundation'){
+    ok=(cards.length===1)&&canStackFoundation(moving,foundations[toIdx]);
+  }
+  if(!ok)return false;
+  snapshot();
+  const src=getPile(fromType,fromIdx);
+  src.splice(src.length-cards.length,cards.length);
+  const dst=getPile(toType,toIdx);
+  for(const c of cards)dst.push(c);
+  // virar carta exposta
+  if(fromType==='tableau'&&src.length&&!src[src.length-1].up){
+    src[src.length-1].up=true;score+=5;
+  }
+  // pontuação estilo Windows
+  if(toType==='foundation')score+=10;
+  else if(fromType==='waste'&&toType==='tableau')score+=5;
+  else if(fromType==='foundation'&&toType==='tableau')score-=15;
+  if(score<0)score=0;
+  moves++;
+  return true;
+}
+
+// achar melhor destino automático ao dar duplo-clique / clique rápido
+function autoDest(fromType,fromIdx,cards){
+  const moving=cards[0];
+  // 1) fundação (só carta única)
+  if(cards.length===1){
+    for(let f=0;f<4;f++) if(canStackFoundation(moving,foundations[f])) return ['foundation',f];
+  }
+  // 2) coluna com carta (preferir não-vazia)
+  for(let c=0;c<7;c++){
+    if(c===fromIdx&&fromType==='tableau')continue;
+    const dst=tableau[c];
+    if(dst.length&&canStackTableau(moving,dst[dst.length-1])) return ['tableau',c];
+  }
+  // 3) coluna vazia (Rei)
+  for(let c=0;c<7;c++){
+    if(c===fromIdx&&fromType==='tableau')continue;
+    if(tableau[c].length===0&&canStackTableau(moving,null)) return ['tableau',c];
+  }
+  return null;
+}
+
+// ---------- monte ----------
+function drawStock(){
+  snapshot();
+  if(stock.length===0){
+    if(waste.length===0){history.pop();return;}
+    // reciclar
+    stock=waste.reverse().map(c=>({...c,up:false}));
+    waste=[];
+    if(!draw3)score=Math.max(0,score-0); // sem penalidade no vira-1
+    moves++;
+  }else{
+    const n=draw3?Math.min(3,stock.length):1;
+    for(let i=0;i<n;i++){const c=stock.pop();c.up=true;waste.push(c);}
+    moves++;
+  }
+  render();updateHUD();
+}
+
+// ---------- auto completar ----------
+function anyToFoundation(){
+  // waste
+  if(waste.length){const c=waste[waste.length-1];for(let f=0;f<4;f++)if(canStackFoundation(c,foundations[f]))return ['waste',0,c.id,f];}
+  for(let t=0;t<7;t++){const p=tableau[t];if(p.length){const c=p[p.length-1];if(c.up)for(let f=0;f<4;f++)if(canStackFoundation(c,foundations[f]))return ['tableau',t,c.id,f];}}
+  return null;
+}
+function autoComplete(){
+  let step=()=>{
+    const m=anyToFoundation();
+    if(!m){checkWin();return;}
+    const [ft,fi,cid,fo]=m;
+    const cards=grabStack(ft,fi,cid);
+    doMove(ft,fi,cards,'foundation',fo);
+    render();updateHUD();
+    checkWin();
+    if(!won)setTimeout(step,120);
+  };
+  step();
+}
+function canAutoComplete(){
+  // todas cartas viradas e stock+waste resolvíveis → oferece
+  if(stock.length||waste.length)return false;
+  for(const col of tableau)for(const c of col)if(!c.up)return false;
+  const total=foundations.reduce((a,p)=>a+p.length,0);
+  return total<52 && total>0 || tableau.some(c=>c.length);
+}
+
+// ---------- vitória ----------
+function checkWin(){
+  const total=foundations.reduce((a,p)=>a+p.length,0);
+  if(total===52&&!won){
+    won=true;if(timer)clearInterval(timer);
+    const t=elapsed();const bonus=Math.max(0,700000/Math.max(t,30)|0);
+    score+=bonus;
+    $('#winScore').textContent=score;
+    $('#winInfo').textContent=`${moves} jogadas · ${fmt(t)} · bônus de tempo +${bonus}`;
+    $('#win').hidden=false;updateHUD();
+  }
+}
+
+// ---------- HUD / tempo ----------
+function elapsed(){return Math.floor((Date.now()-started)/1000)}
+function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+function tick(){$('#time').textContent=fmt(elapsed())}
+function updateHUD(){
+  $('#score').textContent=score;
+  $('#moves').textContent=moves;
+  $('#btnUndo').disabled=!history.length;
+  $('#btnAuto').hidden=!canAutoComplete();
+}
+let toastT=null;
+function toast(msg){
+  const el=$('#toast');el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),1400);
+}
+
+// ---------- render ----------
+function cardEl(card){
+  const el=document.createElement('div');
+  el.className='card '+(card.up?(card.red?'red':'black'):'back');
+  el.dataset.id=card.id;
+  if(card.up){
+    const r=RANKS[card.rank],s=card.suit;
+    el.innerHTML=
+      `<div class="corner tl"><span class="rank">${r}</span><span class="suit-c">${s}</span></div>`+
+      `<div class="center pip">${s}</div>`+
+      `<div class="corner br"><span class="rank">${r}</span><span class="suit-c">${s}</span></div>`;
+  }
+  return el;
+}
+
+function render(){
+  // overlap vertical responsivo — altura derivada da LARGURA (estável),
+  // nunca da altura do slot (que recebe minHeight e infla em loop)
+  const w=$('#stock').getBoundingClientRect().width||86;
+  const cardH=w*7/5;
+  const upGap=Math.max(16,cardH*0.26);
+  const downGap=Math.max(8,cardH*0.11);
+
+  // stock
+  const stockPile=$('#stock .pile');stockPile.innerHTML='';
+  if(stock.length){
+    const el=cardEl({...stock[stock.length-1],up:false});el.style.top='0px';
+    stockPile.appendChild(el);
+  }
+  $('#stock .stock-count').textContent=stock.length?stock.length:'';
+  if(!stock.length){
+    const rc=document.createElement('div');rc.className='recycle';rc.textContent='↻';
+    stockPile.appendChild(rc);
+  }
+
+  // waste (mostra até 3 no vira-3)
+  const wp=$('#waste .pile');wp.innerHTML='';
+  const showN=draw3?Math.min(3,waste.length):Math.min(1,waste.length);
+  const startW=waste.length-showN;
+  for(let i=0;i<showN;i++){
+    const card=waste[startW+i];
+    const el=cardEl(card);el.style.top='0px';
+    el.style.left=(i*22)+'%';el.style.right='auto';el.style.width='100%';
+    el.style.left='0';el.style.transform=`translateX(${i* (draw3?18:0)}px)`;
+    if(startW+i===waste.length-1){el.classList.add('top');}
+    wp.appendChild(el);
+  }
+
+  // fundações
+  document.querySelectorAll('.found .pile').forEach((p,f)=>{
+    p.innerHTML='';
+    const pile=foundations[f];
+    if(pile.length){const el=cardEl(pile[pile.length-1]);el.style.top='0px';p.appendChild(el);}
+  });
+
+  // tableau
+  const slots=cols();
+  slots.forEach((slot,c)=>{
+    let pile=slot.querySelector('.pile');
+    pile.innerHTML='';
+    let y=0;
+    tableau[c].forEach((card,i)=>{
+      const el=cardEl(card);
+      el.style.top=y+'px';
+      pile.appendChild(el);
+      y+=card.up?upGap:downGap;
+    });
+    slot.style.minHeight=(cardH+y)+'px';
+  });
+
+  wireInteractions();
+  updateHUD();
+}
+
+// ---------- interações: pointer drag + clique ----------
+let drag=null;
+function locate(cardId){
+  // encontra (type,idx) do card
+  if(waste.some(c=>c.id===cardId))return ['waste',0];
+  for(let f=0;f<4;f++)if(foundations[f].some(c=>c.id===cardId))return ['foundation',f];
+  for(let t=0;t<7;t++)if(tableau[t].some(c=>c.id===cardId))return ['tableau',t];
+  return null;
+}
+
+function slotFromPoint(x,y){
+  const els=document.elementsFromPoint(x,y);
+  for(const e of els){
+    const s=e.closest('.slot');
+    if(s&&s.dataset.pile&&s.dataset.pile!=='stock')return s;
+  }
+  return null;
+}
+
+function wireInteractions(){
+  // stock clique
+  $('#stock').onpointerdown=e=>{e.preventDefault();drawStock();};
+
+  document.querySelectorAll('.card').forEach(el=>{
+    const id=el.dataset.id;
+    if(el.classList.contains('back'))return;
+    el.onpointerdown=e=>startDrag(e,el,id);
+  });
+}
+
+function startDrag(e,el,id){
+  if(won)return;
+  const loc=locate(id);if(!loc)return;
+  const [type,idx]=loc;
+  if(type==='stock')return;
+  const cards=grabStack(type,idx,id);
+  if(!cards){return;}
+  e.preventDefault();
+  const board=$('#board');
+  const startX=e.clientX,startY=e.clientY;
+  const srcPile=el.closest('.pile');
+  // elementos arrastados
+  const dragEls=[];
+  const base=cards.map(c=>srcPile.querySelector(`[data-id="${c.id}"]`)).filter(Boolean);
+  const rect0=base[0].getBoundingClientRect();
+  let moved=false;
+  const offX=startX-rect0.left, offY=startY-rect0.top;
+
+  function onMove(ev){
+    const dx=ev.clientX-startX, dy=ev.clientY-startY;
+    if(!moved && Math.hypot(dx,dy)<5)return;
+    if(!moved){
+      moved=true;
+      base.forEach((b,i)=>{
+        const r=b.getBoundingClientRect();
+        b.classList.add('dragging');
+        b.style.position='fixed';
+        b.style.width=r.width+'px';
+        b.style.left='0';b.style.top='0';b.style.right='auto';
+        b.style.zIndex=(1000+i);
+        b._gap=r.top-rect0.top;
+      });
+    }
+    base.forEach(b=>{
+      b.style.transform=`translate(${ev.clientX-offX}px,${ev.clientY-offY+b._gap}px)`;
+    });
+  }
+  function onUp(ev){
+    document.removeEventListener('pointermove',onMove);
+    document.removeEventListener('pointerup',onUp);
+    if(!moved){
+      // clique simples → auto destino
+      const dest=autoDest(type,idx,cards);
+      if(dest){const ok=doMove(type,idx,cards,dest[0],dest[1]);if(ok){render();checkWin();}}
+      return;
+    }
+    const slot=slotFromPoint(ev.clientX,ev.clientY);
+    let done=false;
+    if(slot){
+      const dt=slot.dataset.pile, di=+slot.dataset.idx;
+      done=doMove(type,idx,cards,dt,di);
+    }
+    render();checkWin();
+    if(!done)render(); // volta ao lugar
+  }
+  document.addEventListener('pointermove',onMove);
+  document.addEventListener('pointerup',onUp);
+}
+
+// ---------- dica ----------
+function hint(){
+  // procura qualquer movimento útil e pisca
+  const tries=[];
+  if(waste.length)tries.push(['waste',0,waste[waste.length-1]]);
+  for(let t=0;t<7;t++){const p=tableau[t];for(let i=0;i<p.length;i++)if(p[i].up){tries.push(['tableau',t,p[i]]);break;}}
+  for(const [tp,ix,card] of tries){
+    const cards=grabStack(tp,ix,card.id);if(!cards)continue;
+    const dest=autoDest(tp,ix,cards);
+    if(dest){
+      // não sugerir mover topo de coluna já sozinho para vazia à toa
+      const srcEl=document.querySelector(`[data-id="${card.id}"]`);
+      if(srcEl){srcEl.classList.add('hint');setTimeout(()=>srcEl.classList.remove('hint'),1500);}
+      return;
+    }
+  }
+  if(stock.length||waste.length){toast('Vire o monte 👆');}
+  else toast('Sem jogadas óbvias 🤔');
+}
+
+// ---------- botões ----------
+$('#btnNew').onclick=()=>deal();
+$('#btnWinNew').onclick=()=>deal();
+$('#btnUndo').onclick=()=>undo();
+$('#btnHint').onclick=()=>hint();
+$('#btnAuto').onclick=()=>autoComplete();
+$('#btnMode').onclick=e=>{
+  draw3=!draw3;
+  e.target.textContent=draw3?'🎚️ Vira 3':'🎚️ Vira 1';
+  toast(draw3?'Modo Vira 3':'Modo Vira 1');
+  // recicla monte+waste
+  stock=stock.concat(waste.reverse()).map(c=>({...c,up:false}));waste=[];
+  render();
+};
+
+window.addEventListener('resize',()=>{if(stock||tableau)render();});
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
+  if(e.key==='h')hint();
+});
+
+deal();
+})();
+</script>
+</body>
+</html>
