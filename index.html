@@ -260,6 +260,7 @@ canvas.cascade{position:fixed;inset:0;z-index:900;pointer-events:none}
     <button class="lv" data-lv="dificil">Difícil</button>
   </div>
   <button class="btn ghost" id="btnDaily">📅 Desafio do dia</button>
+  <button class="btn ghost" id="btnAnalyze">🔎 Onde errei?</button>
   <button class="btn ghost" id="btnStats" title="Estatísticas">📊</button>
   <button class="btn ghost" id="btnSound" title="Som">🔊</button>
 </div>
@@ -313,6 +314,16 @@ canvas.cascade{position:fixed;inset:0;z-index:900;pointer-events:none}
   </div>
 </div>
 
+<div id="analysis" class="overlay" hidden>
+  <div class="panel">
+    <h2 id="anaTitle">🔎 Análise</h2>
+    <p id="anaBody" style="color:var(--ink);font-size:15px;line-height:1.5"></p>
+    <div class="btns">
+      <button class="btn primary" id="btnAnaClose">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -323,6 +334,7 @@ const RED=new Set(['♥','♦']);
 const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const $=s=>document.querySelector(s);
 const isRedSuit=si=>si===1||si===2;
+const cardLabel=c=>RANKS[c.rank]+c.suit; // ex.: "7♠"
 
 // ---------- níveis ----------
 // Todos os níveis compram 1 carta por vez (Vira 1). A dificuldade vem
@@ -337,7 +349,7 @@ const DAILY_CFG={nome:'Desafio do dia',draw:1,redeals:Infinity,hints:3,undos:Inf
 
 // ---------- estado ----------
 let stock=[], waste=[], foundations=[[],[],[],[]], tableau=[[],[],[],[],[],[],[]];
-let history=[], moves=0, score=0, started=0, timer=null, won=false;
+let history=[], moveLog=[], moves=0, score=0, started=0, timer=null, won=false;
 let levelKey='facil', cfg=LEVELS.facil, isDaily=false;
 let redealsLeft=Infinity, hintsLeft=Infinity, undosLeft=Infinity;
 let soundOn=true, cascadeCanvas=null, winTimer=null;
@@ -393,18 +405,11 @@ function layoutFromDeck(deck){
    reciclagem ilimitada do monte (o limite de reciclagem do
    nível é só desafio, não impede a vitória "em tese").
    ============================================================ */
-function solvable(layout, drawN){
-  const toInt=c=>SUITS.indexOf(c.suit)*13+c.rank;
-  // estado compacto
-  const st={
-    t: layout.tab.map(p=>p.map(toInt)),
-    du: layout.tab.map((p,c)=>c),           // c cartas viradas pra baixo
-    f: [0,0,0,0],                            // nº jogado por naipe
-    s: layout.stock.map(toInt),             // topo = fim
-    w: []
-  };
+// motor de busca: prova (acha UM caminho de vitória) a partir de um
+// estado já pronto {t,du,f,s,w} (cartas = inteiros). Serve tanto para
+// validar o baralho inicial quanto para ANALISAR a partida em andamento.
+function provableWin(st, drawN, NODE_CAP, TIME_CAP){
   const visited=new Set();
-  const NODE_CAP=140000, TIME_CAP=90;
   const t0=performance.now();
   let nodes=0, budgetOut=false;
 
@@ -475,6 +480,27 @@ function solvable(layout, drawN){
   }
   return dfs(st);
 }
+// estado compacto a partir do baralho inicial
+function solvable(layout, drawN){
+  const toInt=c=>SUITS.indexOf(c.suit)*13+c.rank;
+  const st={
+    t: layout.tab.map(p=>p.map(toInt)),
+    du: layout.tab.map((p,c)=>c),
+    f: [0,0,0,0],
+    s: layout.stock.map(toInt),
+    w: []
+  };
+  return provableWin(st, drawN, 140000, 90);
+}
+// estado compacto a partir de um snapshot de jogo (p/ a análise "onde errei")
+function stateFromSnapshot(snap){
+  const toInt=c=>SUITS.indexOf(c.suit)*13+c.rank;
+  const t=snap.tableau.map(col=>col.map(toInt));
+  const du=snap.tableau.map(col=>col.filter(c=>!c.up).length); // viradas ficam no fundo
+  const f=[0,0,0,0];
+  snap.foundations.forEach(p=>{ if(p.length) f[SUITS.indexOf(p[0].suit)]=p.length; });
+  return {t, du, f, s:snap.stock.map(toInt), w:snap.waste.map(toInt)};
+}
 
 // acha um baralho vencível a partir de um seed base (determinístico)
 function findWinnable(baseSeed, drawN){
@@ -533,7 +559,7 @@ function deal(opts){
   tableau=res.layout.tab.map((p,ci)=>p.map((c,n)=>toCard(c,n===ci))); // última de cada coluna virada
   stock=res.layout.stock.map(c=>toCard(c,false));
   waste=[];foundations=[[],[],[],[]];
-  history=[];moves=0;score=0;won=false;
+  history=[];moveLog=[];moves=0;score=0;won=false;
   redealsLeft=cfg.redeals; hintsLeft=cfg.hints; undosLeft=cfg.undos;
   started=Date.now();
   if(timer)clearInterval(timer); timer=setInterval(tick,1000);
@@ -553,6 +579,7 @@ function undo(){
   if(!history.length||won)return;
   if(undosLeft<=0){toast('Sem mais desfazer 🔒');return;}
   const s=JSON.parse(history.pop());
+  moveLog.pop();
   ({stock,waste,foundations,tableau,moves,score,redealsLeft}=s);
   if(undosLeft!==Infinity)undosLeft--;
   render();updateHUD();
@@ -600,6 +627,12 @@ function doMove(fromType,fromIdx,cards,toType,toIdx){
   }
   if(!ok)return false;
   snapshot();
+  // descrição legível p/ a análise "onde errei"
+  const dstPile0=getPile(toType,toIdx);
+  let destDesc = toType==='foundation' ? 'fundação'
+               : dstPile0.length===0 ? 'coluna vazia'
+               : 'o '+cardLabel(dstPile0[dstPile0.length-1]);
+  moveLog.push(`moveu ${cardLabel(moving)}${cards.length>1?` (+${cards.length-1})`:''} → ${destDesc}`);
   const src=getPile(fromType,fromIdx);
   src.splice(src.length-cards.length,cards.length);
   const dst=getPile(toType,toIdx);
@@ -640,13 +673,13 @@ function drawStock(){
   if(stock.length===0){
     if(waste.length===0)return;
     if(redealsLeft<=0){toast('Sem mais reciclagens 🔒');SND.bad();return;}
-    snapshot();
+    snapshot();moveLog.push('reciclou o monte');
     stock=waste.reverse().map(c=>({...c,up:false}));
     waste=[];
     if(redealsLeft!==Infinity)redealsLeft--;
     moves++;SND.draw();
   }else{
-    snapshot();
+    snapshot();moveLog.push('comprou carta');
     const n=cfg.draw>1?Math.min(cfg.draw,stock.length):1;
     for(let i=0;i<n;i++){const c=stock.pop();c.up=true;waste.push(c);}
     moves++;SND.draw();
@@ -908,6 +941,94 @@ function render(){
 
   wireInteractions();
   updateHUD();
+  saveGame();
+}
+
+// ---------- autosave (sobrevive ao reload) ----------
+function saveGame(){
+  try{
+    if(won){localStorage.removeItem('pac_save');return;}
+    localStorage.setItem('pac_save',JSON.stringify({
+      v:1, levelKey, isDaily, stock, waste, foundations, tableau,
+      moves, score, redealsLeft, hintsLeft, undosLeft,
+      elapsedMs: Date.now()-started,
+      history, moveLog
+    }));
+  }catch(e){}
+}
+function loadGame(){
+  let s; try{ s=JSON.parse(localStorage.getItem('pac_save')); }catch(e){ s=null; }
+  if(!s||s.v!==1||!s.tableau)return false;
+  try{
+    levelKey=s.levelKey&&LEVELS[s.levelKey]?s.levelKey:'facil';
+    isDaily=!!s.isDaily;
+    cfg=isDaily?DAILY_CFG:LEVELS[levelKey];
+    stock=s.stock; waste=s.waste; foundations=s.foundations; tableau=s.tableau;
+    moves=s.moves|0; score=s.score|0;
+    redealsLeft=s.redealsLeft===null?Infinity:s.redealsLeft;
+    hintsLeft=s.hintsLeft===null?Infinity:s.hintsLeft;
+    undosLeft=s.undosLeft===null?Infinity:s.undosLeft;
+    history=Array.isArray(s.history)?s.history:[];
+    moveLog=Array.isArray(s.moveLog)?s.moveLog:[];
+    won=false;
+    started=Date.now()-(s.elapsedMs||0);
+    if(timer)clearInterval(timer); timer=setInterval(tick,1000);
+    applyLevelUI(); render(); updateHUD();
+    return true;
+  }catch(e){ return false; }
+}
+
+// ---------- análise "onde errei?" ----------
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let analyzing=false;
+async function analyzeMistake(){
+  if(analyzing)return;
+  if(won){ showAnalysis({won:true}); return; }
+  analyzing=true;
+  toast('Analisando sua partida… 🔎');
+  await sleep(30);
+  // linha completa de estados jogados: history = [S0..S_{k-1}], ao vivo = S_k
+  const line = history.map(h=>JSON.parse(h));
+  line.push({stock,waste,foundations,tableau}); // estado atual
+  const drawN=cfg.draw;
+  const CAP_N=500000, CAP_T=500; // orçamento generoso (ação sob demanda)
+  const win=i=>provableWin(stateFromSnapshot(line[i]),drawN,CAP_N,CAP_T);
+
+  // o estado atual ainda é vencível?
+  const curWin=win(line.length-1);
+  if(curWin){ analyzing=false; showAnalysis({stillWinnable:true}); return; }
+
+  // busca binária: maior índice ainda vencível (line[0] = distribuição, vencível)
+  let lo=0, hi=line.length-1; // line[lo] vencível, line[hi] não
+  // confirma que a distribuição é vencível (deveria ser sempre)
+  if(!win(0)){ analyzing=false; showAnalysis({unknown:true}); return; }
+  while(hi-lo>1){
+    const mid=(lo+hi)>>1;
+    await sleep(0);
+    if(win(mid))lo=mid; else hi=mid;
+  }
+  analyzing=false;
+  // o erro é a jogada que leva line[lo] → line[lo+1] = moveLog[lo]
+  showAnalysis({
+    stillWinnable:false,
+    lastOkMove: lo,            // nº de jogadas ainda ok
+    mistakeNum: lo+1,          // a jogada do erro (1-based)
+    mistakeDesc: moveLog[lo]||'(jogada não registrada)',
+    totalMoves: moves
+  });
+}
+function showAnalysis(r){
+  const t=$('#anaTitle'), b=$('#anaBody');
+  if(r.won){ t.textContent='Partida vencida 🏆'; b.innerHTML='Você ganhou essa — nada pra corrigir aqui!'; }
+  else if(r.stillWinnable){ t.textContent='Ainda dá pra ganhar! 💪'; b.innerHTML='Você <b>não errou</b> — essa posição ainda tem solução. Clica em <b>💡 Dica</b> pra ver um bom próximo passo.'; }
+  else if(r.unknown){ t.textContent='Não consegui concluir 🤔'; b.innerHTML='A análise não conseguiu provar o caminho dentro do tempo. Tenta de novo, ou siga jogando.'; }
+  else {
+    t.textContent='Achei onde apertou 🔎';
+    b.innerHTML=`Até a <b>jogada ${r.lastOkMove}</b> ainda dava pra ganhar.<br>`+
+      `O nó foi na <b>jogada ${r.mistakeNum}</b> (de ${r.totalMoves}): você <b>${r.mistakeDesc}</b>.<br>`+
+      `A partir daí não achei mais como fechar. 💡 Dá pra <b>Desfazer</b> até ali e tentar outro caminho.`;
+  }
+  $('#analysis').hidden=false;
 }
 
 // ---------- interações ----------
@@ -1012,6 +1133,8 @@ $('#btnAuto').onclick=()=>autoComplete();
 $('#btnShare').onclick=()=>doShare();
 $('#btnStats').onclick=()=>showStats();
 $('#btnStatsClose').onclick=()=>{$('#stats').hidden=true;};
+$('#btnAnalyze').onclick=()=>analyzeMistake();
+$('#btnAnaClose').onclick=()=>{$('#analysis').hidden=true;};
 $('#btnDaily').onclick=()=>deal({daily:true,seed:dateSeed()});
 $('#btnSound').onclick=()=>{
   soundOn=!soundOn;
@@ -1028,8 +1151,8 @@ document.querySelectorAll('.lv').forEach(b=>{
   };
 });
 // fechar overlays clicando fora do painel
-['#win','#stats'].forEach(sel=>{
-  $(sel).addEventListener('pointerdown',e=>{ if(e.target.id===sel.slice(1) && sel==='#stats')$(sel).hidden=true; });
+['#stats','#analysis'].forEach(sel=>{
+  $(sel).addEventListener('pointerdown',e=>{ if(e.target.id===sel.slice(1))$(sel).hidden=true; });
 });
 
 window.addEventListener('resize',()=>render());
@@ -1042,7 +1165,8 @@ document.addEventListener('keydown',e=>{
 // primeiro gesto libera o áudio (política de autoplay)
 window.addEventListener('pointerdown',()=>audio(),{once:true});
 
-deal({});
+// restaura a partida salva (autosave); se não houver, distribui nova
+if(!loadGame()) deal({});
 })();
 </script>
 </body>
