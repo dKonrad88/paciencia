@@ -337,13 +337,14 @@ const isRedSuit=si=>si===1||si===2;
 const cardLabel=c=>RANKS[c.rank]+c.suit; // ex.: "7♠"
 
 // ---------- níveis ----------
-// Todos os níveis compram 1 carta por vez (Vira 1). A dificuldade vem
-// das AJUDAS: reciclagens do monte, dicas e desfazer. (Vira 3 foi
-// removido — o Diego preferiu sempre 1 carta.)
+// Todos os níveis: Vira 1 e reciclagem ILIMITADA do monte. Qualquer
+// limite de reciclagem pode TRAVAR uma mão vencível (cartas presas no
+// monte sem como ciclar) — então a dificuldade vem só das AJUDAS
+// (dica e desfazer), que nunca tornam a partida impossível.
 const LEVELS={
   facil:  {nome:'Fácil',  draw:1, redeals:Infinity, hints:Infinity, undos:Infinity},
   medio:  {nome:'Médio',  draw:1, redeals:Infinity, hints:3,        undos:Infinity},
-  dificil:{nome:'Difícil',draw:1, redeals:2,        hints:1,        undos:8},
+  dificil:{nome:'Difícil',draw:1, redeals:Infinity, hints:1,        undos:8},
 };
 const DAILY_CFG={nome:'Desafio do dia',draw:1,redeals:Infinity,hints:3,undos:Infinity};
 
@@ -965,7 +966,8 @@ function loadGame(){
     cfg=isDaily?DAILY_CFG:LEVELS[levelKey];
     stock=s.stock; waste=s.waste; foundations=s.foundations; tableau=s.tableau;
     moves=s.moves|0; score=s.score|0;
-    redealsLeft=s.redealsLeft===null?Infinity:s.redealsLeft;
+    // reciclagem é ilimitada agora → destrava partidas salvas que ficaram em ↻0
+    redealsLeft=(cfg.redeals===Infinity||s.redealsLeft===null)?Infinity:s.redealsLeft;
     hintsLeft=s.hintsLeft===null?Infinity:s.hintsLeft;
     undosLeft=s.undosLeft===null?Infinity:s.undosLeft;
     history=Array.isArray(s.history)?s.history:[];
